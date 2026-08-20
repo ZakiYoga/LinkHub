@@ -2,7 +2,19 @@ import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { menuItemFormSchema } from "../schemas/itemSchema";
 import { createItem, updateItem } from "../api/itemApi";
-import Modal from "./Modal.jsx";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 const TYPE_OPTIONS = [
   { value: "spreadsheet", label: "Spreadsheet" },
@@ -87,93 +99,90 @@ export default function ItemFormModal({ open, onClose, onSaved, item, folderId, 
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? "Edit Link" : "Tambah Link"}>
-      <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-        <div>
-          <label className="block text-sm text-slate-600 mb-1">Nama</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            autoFocus
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-slate-600 mb-1">URL</label>
-          <input
-            type="url"
-            value={form.url}
-            onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            placeholder="https://..."
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-slate-600 mb-1">Tipe</label>
-          <select
-            value={form.type}
-            onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-          >
-            {TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm text-slate-600 mb-1">Deskripsi (opsional)</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            rows={2}
-          />
-        </div>
-        {tags?.length > 0 && (
-          <div>
-            <label className="block text-sm text-slate-600 mb-1">Tag</label>
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  className={
-                    form.tag_ids.includes(tag.id)
-                      ? "text-xs rounded-full px-3 py-1 bg-blue-600 text-white border border-blue-600"
-                      : "text-xs rounded-full px-3 py-1 bg-white text-slate-600 border border-slate-300 hover:border-slate-400"
-                  }
-                >
-                  {tag.name}
-                </button>
-              ))}
-            </div>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Link" : "Tambah Link"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="item-name">Nama</Label>
+            <Input
+              id="item-name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              autoFocus
+              required
+            />
           </div>
-        )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
-          >
-            Batal
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? "Menyimpan..." : "Simpan"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <div className="space-y-1.5">
+            <Label htmlFor="item-url">URL</Label>
+            <Input
+              id="item-url"
+              type="url"
+              value={form.url}
+              onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+              placeholder="https://..."
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Tipe</Label>
+            <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="item-desc">Deskripsi (opsional)</Label>
+            <textarea
+              id="item-desc"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+          {tags?.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Tag</Label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => {
+                  const active = form.tag_ids.includes(tag.id);
+                  return (
+                    <Badge
+                      key={tag.id}
+                      variant={active ? "default" : "outline"}
+                      onClick={() => toggleTag(tag.id)}
+                      className={cn("cursor-pointer select-none", !active && "text-muted-foreground")}
+                    >
+                      {tag.name}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

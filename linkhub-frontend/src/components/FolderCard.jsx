@@ -1,105 +1,68 @@
-import { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
-import { FaFolder, FaPen, FaTrash, FaUsers, FaEllipsisV, FaKey } from "react-icons/fa";
+import { Folder, MoreVertical, Users, Pencil, Trash2, KeyRound, FolderLock } from "lucide-react";
 import { folderShape } from "../types/propTypes";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 // canEdit: owner or admin — allowed to rename/delete this folder.
 // canManageCollaborators mirrors canEdit on the backend (owner or
 // admin), so it's the same value; kept as a separate prop in case that
 // ever diverges.
 export default function FolderCard({ folder, canEdit, onEdit, onDelete, onManageCollaborators, onManagePin }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
-
-  function handleAction(e, action) {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenuOpen(false);
-    action(folder);
-  }
-
   return (
-    <div className="relative group">
+    <div className="group relative">
       <Link
         to={`/folder/${folder.id}`}
-        className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 hover:border-slate-400 hover:shadow-sm transition"
+        className="flex items-center gap-3 rounded-lg border p-4 transition hover:border-foreground/30 hover:shadow-sm"
       >
-        <FaFolder className="text-amber-500 text-xl shrink-0" />
-        <span className="font-medium text-slate-800 truncate pr-8">{folder.name}</span>
+        {folder.pin_protected ? (
+          <FolderLock className="h-8 w-8 shrink-0 fill-amber-400 text-amber-700/60" />
+        ) : (
+          <Folder className="h-8 w-8 shrink-0 fill-amber-400 text-amber-600/60" />
+        )}
+        <span className="truncate pr-8 font-medium text-foreground">{folder.name}</span>
       </Link>
 
       {canEdit && (
-        <div
-          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
-          ref={menuRef}
-        >
-          <button
-            type="button"
-            title="Opsi lainnya"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setMenuOpen((prev) => !prev);
-            }}
-            className="p-1.5 rounded bg-white border border-slate-200 text-slate-500 hover:text-slate-700"
-          >
-            <FaEllipsisV size={12} />
-          </button>
-
-          {menuOpen && (
-            <div className="absolute right-0 mt-1 w-44 rounded-lg border border-slate-200 bg-white shadow-lg py-1 z-10">
-              <button
-                type="button"
-                title="Kelola PIN"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onManagePin(folder);
-                }}
-                className="p-1.5 rounded bg-white border border-slate-200 text-slate-500 hover:text-amber-600"
+        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 bg-background"
+                onClick={(e) => e.preventDefault()}
+                title="Opsi lainnya"
               >
-                <FaKey size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleAction(e, onManageCollaborators)}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-purple-600"
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+              <DropdownMenuItem onSelect={() => onManagePin(folder)}>
+                <KeyRound /> Kelola PIN
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onManageCollaborators(folder)}>
+                <Users /> Kelola kolaborator
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onEdit(folder)}>
+                <Pencil /> Edit folder
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => onDelete(folder)}
+                className="text-destructive focus:text-destructive"
               >
-                <FaUsers size={12} />
-                Kelola kolaborator
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleAction(e, onEdit)}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600"
-              >
-                <FaPen size={12} />
-                Edit folder
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleAction(e, onDelete)}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-red-600"
-              >
-                <FaTrash size={12} />
-                Hapus folder
-              </button>
-            </div>
-          )}
+                <Trash2 /> Hapus folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
     </div>

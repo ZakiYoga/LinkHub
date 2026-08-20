@@ -7,8 +7,10 @@ export const useBrowseFilterStore = create((set) => ({
   type: "",
   tagIds: [],
   sort: "name",
+  ownerScope: "all", // "all" | "mine" | "shared"
   setType: (type) => set({ type }),
   setSort: (sort) => set({ sort }),
+  setOwnerScope: (ownerScope) => set({ ownerScope }),
   toggleTag: (tagId) =>
     set((s) => ({
       tagIds: s.tagIds.includes(tagId)

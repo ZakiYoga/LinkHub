@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { folderFormSchema } from "../schemas/folderSchema";
 import { createFolder, updateFolder } from "../api/folderApi";
-import Modal from "./Modal.jsx";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // One modal handles both create and edit: if `folder` is passed, it's
 // edit mode (pre-fills the name and PATCHes on submit); otherwise it's
@@ -52,38 +61,34 @@ export default function FolderFormModal({ open, onClose, onSaved, folder, parent
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? "Edit Folder" : "Buat Folder"}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm text-slate-600 mb-1">Nama Folder</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            autoFocus
-            required
-          />
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
-          >
-            Batal
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? "Menyimpan..." : "Simpan"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Folder" : "Buat Folder"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="folder-name">Nama Folder</Label>
+            <Input
+              id="folder-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              required
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

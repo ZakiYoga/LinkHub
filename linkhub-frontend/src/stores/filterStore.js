@@ -5,9 +5,11 @@ export const useFilterStore = create((set) => ({
   type: "",
   tagIds: [],
   sort: "name",
+  ownerScope: "all", // "all" | "mine" | "shared"
   setQuery: (query) => set({ query }),
   setType: (type) => set({ type }),
   setSort: (sort) => set({ sort }),
+  setOwnerScope: (ownerScope) => set({ ownerScope }),
   toggleTag: (tagId) =>
     set((s) => ({
       tagIds: s.tagIds.includes(tagId)
@@ -15,5 +17,5 @@ export const useFilterStore = create((set) => ({
         : [...s.tagIds, tagId],
     })),
   clearTags: () => set({ tagIds: [] }),
-  reset: () => set({ query: "", type: "", tagIds: [], sort: "name" }),
+  reset: () => set({ query: "", type: "", tagIds: [], sort: "name", ownerScope: "all" }),
 }));

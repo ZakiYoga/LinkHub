@@ -1,21 +1,34 @@
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
+import {
+  Breadcrumb as BreadcrumbRoot,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export default function Breadcrumb({ items }) {
   return (
-    <nav className="flex items-center flex-wrap gap-1 text-sm text-slate-500 mb-4">
-      <Link to="/" className="hover:text-slate-800">
-        Root
-      </Link>
-      {items.map((f) => (
-        <span key={f.id} className="flex items-center gap-1">
-          <span>/</span>
-          <Link to={`/folder/${f.id}`} className="hover:text-slate-800">
-            {f.name}
-          </Link>
-        </span>
-      ))}
-    </nav>
+    <BreadcrumbRoot className="mb-4">
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link to="/">Root</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        {items.map((f) => (
+          <span key={f.id} className="contents">
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to={`/folder/${f.id}`}>{f.name}</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </span>
+        ))}
+      </BreadcrumbList>
+    </BreadcrumbRoot>
   );
 }
 

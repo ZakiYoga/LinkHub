@@ -11,7 +11,7 @@ export function useViewMode() {
   const itemGridClass =
     viewMode === "list"
       ? "flex flex-col gap-2"
-      : "grid grid-cols-2 md:grid-cols-3 gap-3";
+      : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3";
 
   return { viewMode, setViewMode, folderGridClass, itemGridClass };
 }

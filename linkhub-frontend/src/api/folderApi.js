@@ -1,9 +1,10 @@
 import axiosClient from "./axiosClient";
 
-export async function listFolders(parentId) {
-  const res = await axiosClient.get("/folders", {
-    params: parentId ? { parent_id: parentId } : {},
-  });
+export async function listFolders(parentId, ownerScope) {
+  const params = {};
+  if (parentId) params.parent_id = parentId;
+  if (ownerScope && ownerScope !== "all") params.owner_scope = ownerScope;
+  const res = await axiosClient.get("/folders", { params });
   return res.data.data; // Folder[]
 }
 

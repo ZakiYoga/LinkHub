@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import { FaFolder, FaUndo } from "react-icons/fa";
+import { Folder, Undo2 } from "lucide-react";
 import { listDeletedFolders, listDeletedItems, restoreFolder, restoreItem } from "../api/trashApi";
 import ItemIcon from "../components/ItemIcon.jsx";
 import PageContainer from "../components/PageContainer.jsx";
+import { Button } from "@/components/ui/button";
 
-// Admins see every soft-deleted folder/item; everyone else only sees
-// their own (backend scopes this via ListDeleted — see FolderService/
-// ItemService). Not part of the original design doc — a practical
-// addition so soft delete is actually usable without direct DB access.
 export default function TrashPage() {
     const [folders, setFolders] = useState([]);
     const [items, setItems] = useState([]);
@@ -49,42 +46,40 @@ export default function TrashPage() {
 
     return (
         <PageContainer size="md">
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Sampah</h1>
-            <p className="text-sm text-slate-500 mb-6">
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Sampah</h1>
+            <p className="mb-6 text-sm text-muted-foreground">
                 Folder dan link yang sudah dihapus. Bisa dipulihkan selama belum ada konflik
                 (mis. folder induk masih terhapus, atau URL sudah dipakai link lain).
             </p>
 
-            {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+            {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
             {loading ? (
-                <p className="text-slate-400">Memuat...</p>
+                <p className="text-muted-foreground">Memuat...</p>
             ) : (
                 <>
                     <section className="mb-8">
-                        <h2 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wide">
+                        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                             Folder ({folders.length})
                         </h2>
                         {folders.length === 0 ? (
-                            <p className="text-slate-400 text-sm">Tidak ada folder terhapus.</p>
+                            <p className="text-sm text-muted-foreground">Tidak ada folder terhapus.</p>
                         ) : (
-                            <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg">
+                            <ul className="divide-y rounded-lg border">
                                 {folders.map((f) => (
-                                    <li
-                                        key={f.id}
-                                        className="flex items-center justify-between gap-3 px-4 py-3"
-                                    >
-                                        <span className="flex items-center gap-2 text-sm min-w-0 truncate">
-                                            <FaFolder className="text-amber-500 shrink-0" size={16} />
+                                    <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                                        <span className="flex min-w-0 items-center gap-2 truncate text-sm">
+                                            <Folder className="h-4 w-4 shrink-0 fill-amber-400 text-amber-500" />
                                             <span className="truncate">{f.name}</span>
                                         </span>
-                                        <button
-                                            type="button"
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            className="h-auto shrink-0 gap-1.5 p-0"
                                             onClick={() => handleRestoreFolder(f.id)}
-                                            className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline shrink-0"
                                         >
-                                            <FaUndo size={12} /> Pulihkan
-                                        </button>
+                                            <Undo2 className="h-3 w-3" /> Pulihkan
+                                        </Button>
                                     </li>
                                 ))}
                             </ul>
@@ -92,29 +87,27 @@ export default function TrashPage() {
                     </section>
 
                     <section>
-                        <h2 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wide">
+                        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                             Link ({items.length})
                         </h2>
                         {items.length === 0 ? (
-                            <p className="text-slate-400 text-sm">Tidak ada link terhapus.</p>
+                            <p className="text-sm text-muted-foreground">Tidak ada link terhapus.</p>
                         ) : (
-                            <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg">
+                            <ul className="divide-y rounded-lg border">
                                 {items.map((item) => (
-                                    <li
-                                        key={item.id}
-                                        className="flex items-center justify-between gap-3 px-4 py-3"
-                                    >
-                                        <span className="flex items-center gap-2 text-sm min-w-0 truncate">
-                                            <ItemIcon type={item.type} className="w-4 h-4 shrink-0" />
+                                    <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                                        <span className="flex min-w-0 items-center gap-2 truncate text-sm">
+                                            <ItemIcon type={item.type} className="h-4 w-4 shrink-0" />
                                             <span className="truncate">{item.name}</span>
                                         </span>
-                                        <button
-                                            type="button"
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            className="h-auto shrink-0 gap-1.5 p-0"
                                             onClick={() => handleRestoreItem(item.id)}
-                                            className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline shrink-0"
                                         >
-                                            <FaUndo size={12} /> Pulihkan
-                                        </button>
+                                            <Undo2 className="h-3 w-3" /> Pulihkan
+                                        </Button>
                                     </li>
                                 ))}
                             </ul>

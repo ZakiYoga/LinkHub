@@ -1,11 +1,9 @@
 import PropTypes from "prop-types";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuthStore } from "../stores/authStore";
+import { useAuthStore, selectIsAdmin } from "../stores/authStore";
 
-// Route guard: redirects to /login if not authenticated as admin.
-// Wrap any admin-only <Route element={...}> with this component.
 export default function RequireAdmin({ children }) {
-  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const isAdmin = useAuthStore(selectIsAdmin);
   const location = useLocation();
 
   if (!isAdmin) {

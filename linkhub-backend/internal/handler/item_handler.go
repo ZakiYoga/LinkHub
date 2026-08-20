@@ -58,16 +58,23 @@ func (h *ItemHandler) List(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(q.Get("page"))
 	limit, _ := strconv.Atoi(q.Get("limit"))
 
-	filter := dto.ItemFilter{
-		FolderID: folderID,
-		Type:     q.Get("type"),
-		TagIDs:   parseTagIDs(q.Get("tag")),
-		Sort:     q.Get("sort"),
-		Page:     page,
-		Limit:    limit,
+	actor, _ := appmw.GetAuthUser(r.Context())
+	var actorID *uuid.UUID
+	if actor != nil {
+		actorID = &actor.ID
 	}
 
-	actor, _ := appmw.GetAuthUser(r.Context())
+	filter := dto.ItemFilter{
+		FolderID:   folderID,
+		Type:       q.Get("type"),
+		TagIDs:     parseTagIDs(q.Get("tag")),
+		Sort:       q.Get("sort"),
+		Page:       page,
+		Limit:      limit,
+		OwnerScope: parseOwnerScope(r),
+		ActorID:    actorID,
+	}
+
 	items, total, err := h.svc.List(r.Context(), filter, actor, r.Header.Get("X-Folder-Pin-Token"))
 	if err != nil {
 		var pinErr *apperror.PinRequiredError
@@ -96,12 +103,20 @@ func (h *ItemHandler) Search(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(q.Get("page"))
 	limit, _ := strconv.Atoi(q.Get("limit"))
 
+	actor, _ := appmw.GetAuthUser(r.Context())
+	var actorID *uuid.UUID
+	if actor != nil {
+		actorID = &actor.ID
+	}
+
 	filter := dto.SearchFilter{
-		Query:  q.Get("q"),
-		Type:   q.Get("type"),
-		TagIDs: parseTagIDs(q.Get("tag")),
-		Page:   page,
-		Limit:  limit,
+		Query:      q.Get("q"),
+		Type:       q.Get("type"),
+		TagIDs:     parseTagIDs(q.Get("tag")),
+		Page:       page,
+		Limit:      limit,
+		OwnerScope: parseOwnerScope(r),
+		ActorID:    actorID,
 	}
 
 	results, total, err := h.svc.Search(r.Context(), filter, h.folderSvc)

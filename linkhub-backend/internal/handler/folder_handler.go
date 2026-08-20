@@ -47,6 +47,19 @@ func unlockTokenFromHeader(r *http.Request) string {
 	return r.Header.Get("X-Folder-Pin-Token")
 }
 
+// parseOwnerScope validates ?owner_scope=, defaulting to "" (no
+// filter / "Semua") for anything unrecognized rather than erroring —
+// an unknown scope value degrading to "show everything" is safer than
+// a 400 breaking the page.
+func parseOwnerScope(r *http.Request) string {
+	switch r.URL.Query().Get("owner_scope") {
+	case "mine", "shared":
+		return r.URL.Query().Get("owner_scope")
+	default:
+		return ""
+	}
+}
+
 // List handles GET /api/v1/folders?parent_id=  (single-level browse mode, public)
 func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 	var parentID *uuid.UUID
@@ -60,7 +73,7 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actor, _ := appmw.GetAuthUser(r.Context())
-	folders, err := h.svc.ListChildren(r.Context(), parentID, actor, unlockTokenFromHeader(r))
+	folders, err := h.svc.ListChildren(r.Context(), parentID, actor, unlockTokenFromHeader(r), parseOwnerScope(r))
 	if err != nil {
 		respondFolderError(w, err)
 		return

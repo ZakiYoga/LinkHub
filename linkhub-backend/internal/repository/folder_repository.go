@@ -10,19 +10,16 @@ import (
 	"gorm.io/gorm"
 )
 
-// FolderRepository is an interface (not a concrete struct) so that
-// FolderService depends on a contract, not on GORM directly. This is
-// what lets us swap in a mock implementation for unit tests later
-// (section 15.1 of the design doc) — comparable to depending on an
-// abstract repository/Protocol in Python instead of the concrete
-// SQLAlchemy session.
 type FolderRepository interface {
 	Create(ctx context.Context, f *model.Folder) error
 	FindByID(ctx context.Context, id uuid.UUID) (*model.Folder, error)
 	// FindByIDAny is like FindByID but ignores the deleted_at filter —
 	// needed for restore (which must find an already-deleted row).
 	FindByIDAny(ctx context.Context, id uuid.UUID) (*model.Folder, error)
-	FindChildren(ctx context.Context, parentID *uuid.UUID) ([]model.Folder, error)
+	// ownerScope/actorID: see applyOwnerScope. Folders are matched
+	// against sharedFolderIDsSQL by their own id (a folder counts as
+	// "shared" if it itself is the collaborated root or a descendant).
+	FindChildren(ctx context.Context, parentID *uuid.UUID, ownerScope string, actorID *uuid.UUID) ([]model.Folder, error)
 	Update(ctx context.Context, f *model.Folder) error
 	CountDescendants(ctx context.Context, id uuid.UUID) (subfolders int64, items int64, err error)
 
@@ -48,6 +45,33 @@ type FolderRepository interface {
 	// currently soft-deleted, in one transaction.
 	RestoreSubtree(ctx context.Context, rootID uuid.UUID) error
 	ExistsActiveIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
+const sharedFolderIDsSQL = `(
+	WITH RECURSIVE shared_root AS (
+		SELECT folder_id AS id FROM folder_collaborators WHERE user_id = ?
+	), shared_tree AS (
+		SELECT id FROM shared_root
+		UNION ALL
+		SELECT f.id FROM folders f JOIN shared_tree st ON f.parent_id = st.id
+	)
+	SELECT id FROM shared_tree
+)`
+
+func applyOwnerScope(query *gorm.DB, scope string, actorID *uuid.UUID, createdByCol, folderIDCol string) *gorm.DB {
+	if actorID == nil {
+		return query
+	}
+	switch scope {
+	case "mine":
+		return query.Where(createdByCol+" = ?", *actorID)
+	case "shared":
+		return query.
+			Where(createdByCol+" <> ?", *actorID).
+			Where(folderIDCol+" IN "+sharedFolderIDsSQL, *actorID)
+	default:
+		return query
+	}
 }
 
 type folderRepository struct {
@@ -92,14 +116,15 @@ func (r *folderRepository) ListDeleted(ctx context.Context, ownerID *uuid.UUID) 
 
 // FindChildren lists folders at a single level. parentID == nil means
 // root level (top of the tree).
-func (r *folderRepository) FindChildren(ctx context.Context, parentID *uuid.UUID) ([]model.Folder, error) {
+func (r *folderRepository) FindChildren(ctx context.Context, parentID *uuid.UUID, ownerScope string, actorID *uuid.UUID) ([]model.Folder, error) {
 	var folders []model.Folder
-	query := r.db.WithContext(ctx).Where("deleted_at IS NULL").Order("name ASC")
+	query := r.db.WithContext(ctx).Model(&model.Folder{}).Where("deleted_at IS NULL").Order("name ASC")
 	if parentID == nil {
 		query = query.Where("parent_id IS NULL")
 	} else {
 		query = query.Where("parent_id = ?", *parentID)
 	}
+	query = applyOwnerScope(query, ownerScope, actorID, "created_by", "id")
 	if err := query.Find(&folders).Error; err != nil {
 		return nil, err
 	}
