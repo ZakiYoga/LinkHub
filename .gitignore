@@ -1,3 +1,15 @@
-/.DS_Store
-/linkhub-frontend.zip
-/linkhub-shadcn-setup.zip
+# Frontend
+/linkhub-frontend/node_modules/
+/linkhub-frontend/dist/
+/linkhub-frontend/build/
+
+# Backend - Go
+/linkhub-backend/.env
+
+# Go build artifacts
+/linkhub-backend/bin/
+/linkhub-backend/*.exe
+/linkhub-backend/*.out
+
+# OS
+.DS_Store
