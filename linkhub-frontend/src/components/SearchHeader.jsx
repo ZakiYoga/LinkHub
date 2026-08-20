@@ -1,12 +1,16 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useFilterStore } from "../stores/filterStore";
+import { useAuthStore, selectIsAuthed } from "../stores/authStore";
 import { listTags } from "../api/tagApi";
 import SearchBar from "./SearchBar.jsx";
 import TagFilterDropdown from "./TagFilterDropdown.jsx";
+import OwnerScopeSelect from "./OwnerScopeSelect.jsx";
+import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 const ITEM_TYPES = [
-    { value: "", label: "Semua Tipe" },
+    { value: "all", label: "Semua Tipe" },
     { value: "spreadsheet", label: "Spreadsheet" },
     { value: "slides", label: "Slides" },
     { value: "drive", label: "Drive" },
@@ -19,11 +23,14 @@ export default function SearchHeader() {
     const query = useFilterStore((s) => s.query);
     const type = useFilterStore((s) => s.type);
     const tagIds = useFilterStore((s) => s.tagIds);
+    const ownerScope = useFilterStore((s) => s.ownerScope);
     const setQuery = useFilterStore((s) => s.setQuery);
     const setType = useFilterStore((s) => s.setType);
     const toggleTag = useFilterStore((s) => s.toggleTag);
     const clearTags = useFilterStore((s) => s.clearTags);
+    const setOwnerScope = useFilterStore((s) => s.setOwnerScope);
     const reset = useFilterStore((s) => s.reset);
+    const isAuthed = useAuthStore(selectIsAuthed);
 
     const [tags, setTags] = useState([]);
     const navigate = useNavigate();
@@ -39,23 +46,24 @@ export default function SearchHeader() {
     }, [location.pathname]);
 
     // Dipicu langsung dari nilai mentah (bukan debounced) — SearchHeader
-    // dirender sekali di App.jsx, di luar <Routes>, jadi dia TIDAK
-    // pernah unmount walau navigasi terjadi di keystroke/reset pertama.
-    // Delay 300ms untuk pemanggilan API pencarian tetap ada, tapi
-    // ditangani terpisah di SearchResultsPage sendiri — bukan di sini.
+    // dirender di dalam MainLayout (lihat src/layouts/MainLayout.jsx),
+    // yang tetap tidak unmount saat berpindah antar route DI DALAM
+    // layout itu (mis. "/" -> "/search"), jadi pathnameRef masih perlu
+    // untuk menghindari navigate() berulang di render yang sama.
     useEffect(() => {
-        const hasActiveSearch = query.trim() !== "" || type !== "" || tagIds.length > 0;
+        const hasActiveSearch =
+            query.trim() !== "" || type !== "" || tagIds.length > 0 || ownerScope !== "all";
         if (hasActiveSearch && pathnameRef.current !== "/search") {
             navigate("/search");
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [query, type, tagIds]);
+    }, [query, type, tagIds, ownerScope]);
 
-    const hasAnyFilter = query || type || tagIds.length > 0;
+    const hasAnyFilter = query || type || tagIds.length > 0 || ownerScope !== "all";
 
     return (
-        <div className="border-b border-slate-200 bg-white">
-            <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="border-b bg-background">
+            <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
                 <div className="flex-1">
                     <SearchBar
                         value={query}
@@ -64,17 +72,18 @@ export default function SearchHeader() {
                     />
                 </div>
                 <div className="flex items-center gap-2">
-                    <select
-                        value={type}
-                        onChange={(e) => setType(e.target.value)}
-                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        {ITEM_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>
-                                {t.label}
-                            </option>
-                        ))}
-                    </select>
+                    <Select value={type || "all"} onValueChange={(v) => setType(v === "all" ? "" : v)}>
+                        <SelectTrigger className="w-37.5">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {ITEM_TYPES.map((t) => (
+                                <SelectItem key={t.value} value={t.value}>
+                                    {t.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
 
                     <TagFilterDropdown
                         tags={tags}
@@ -83,10 +92,14 @@ export default function SearchHeader() {
                         onClear={clearTags}
                     />
 
+                    {isAuthed && (
+                        <OwnerScopeSelect value={ownerScope} onChange={setOwnerScope} />
+                    )}
+
                     {hasAnyFilter && (
-                        <button type="button" onClick={reset} className="text-xs text-slate-500 hover:text-red-600">
+                        <Button variant="link" size="sm" className="text-muted-foreground" onClick={reset}>
                             Reset
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>

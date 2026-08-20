@@ -1,23 +1,59 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
+import { Eye, EyeOff } from "lucide-react";
 import { setFolderPin, removeFolderPin } from "../api/pinApi";
-import Modal from "./Modal.jsx";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
-// Owner/admin-only: set, change, or remove a folder's PIN. Shown from
-// the lock icon on FolderCard (only rendered when canEdit is true —
-// same rule as edit/delete, see PermissionService.CanManagePin).
+// Owner/admin-only: set, change, or remove a folder's PIN. Unlike
+// PinPromptModal this is a deliberate form (retype-to-confirm + submit
+// button, no auto-submit/animation) — the two components look similar
+// but serve opposite intents: this one *creates* a PIN, so it should
+// feel like filling out a form, not entering one to unlock something.
 export default function PinManageModal({ open, onClose, folder, onSaved }) {
   const [pin, setPin] = useState("");
+  const [retypePin, setRetypePin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setPin("");
+      setRetypePin("");
+      setShowPin(false);
+      setError("");
+    }
+  }, [open]);
 
   async function handleSetPin(e) {
     e.preventDefault();
     setError("");
+
+    if (pin.length < 4) {
+      setError("PIN minimal 4 digit");
+      return;
+    }
+    if (pin !== retypePin) {
+      setError("Ulangi PIN tidak sama dengan PIN di atas");
+      return;
+    }
+
     setSaving(true);
+    
     try {
       await setFolderPin(folder.id, pin);
       setPin("");
+      setRetypePin("");
       onSaved();
       onClose();
     } catch (err) {
@@ -44,56 +80,98 @@ export default function PinManageModal({ open, onClose, folder, onSaved }) {
   if (!folder) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={`PIN — ${folder.name}`}>
-      <p className="text-xs text-slate-500 mb-4">
-        Folder yang dikunci PIN tetap terlihat namanya, tapi isinya (subfolder & link) tidak
-        bisa dibuka tanpa PIN yang benar. Berlaku hanya untuk folder ini, tidak otomatis
-        berlaku ke subfolder di dalamnya.
-      </p>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Manage PIN — {folder.name}</DialogTitle>
+        </DialogHeader>
 
-      <form onSubmit={handleSetPin} className="flex gap-2 mb-3">
-        <input
-          type="password"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={6}
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-          placeholder={folder.pin_protected ? "PIN baru (ganti)" : "Set PIN (4-6 digit)"}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={saving || pin.length < 4}
-          className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          Simpan
-        </button>
-      </form>
+        {/* <p className="text-xs text-muted-foreground">
+          Folder yang dikunci PIN tetap terlihat namanya, tapi isinya (subfolder & link) tidak
+          bisa dibuka tanpa PIN yang benar. Berlaku hanya untuk folder ini, tidak otomatis
+          berlaku ke subfolder di dalamnya.
+        </p> */}
 
-      {folder.pin_protected && (
-        <button
-          type="button"
-          onClick={handleRemovePin}
-          disabled={saving}
-          className="text-sm text-red-600 hover:underline mb-3"
-        >
-          Hapus PIN (buka kunci folder ini)
-        </button>
-      )}
+        <form onSubmit={handleSetPin} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">
+              Masukkan PIN 4-6 digit
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-auto gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+              onClick={() => setShowPin((v) => !v)}
+            >
+              {showPin ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {showPin ? "Sembunyikan" : "Tampilkan"}
+            </Button>
+          </div>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+          <div className="space-y-2">
+            <div className="">
+            <Label>{folder.pin_protected ? "PIN baru" : "PIN"}</Label>
 
-      <div className="flex justify-end pt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 text-sm rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"
-        >
-          Tutup
-        </button>
-      </div>
-    </Modal>
+            </div>
+            <InputOTP
+              maxLength={6}
+              value={pin}
+              onChange={setPin}
+              pattern={REGEXP_ONLY_DIGITS}
+            >
+              <InputOTPGroup>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <InputOTPSlot key={i} index={i} mask={!showPin} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Ulangi PIN</Label>
+            <InputOTP
+              maxLength={6}
+              value={retypePin}
+              onChange={setRetypePin}
+              pattern={REGEXP_ONLY_DIGITS}
+            >
+              <InputOTPGroup>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <InputOTPSlot key={i} index={i} mask={!showPin} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <DialogFooter className="flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            {folder.pin_protected ? (
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto justify-start p-0 text-destructive"
+                onClick={handleRemovePin}
+                disabled={saving}
+              >
+                Hapus PIN
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={saving || pin.length < 4 || retypePin.length < 4}>
+                {saving ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { cn } from "@/lib/utils";
 
 const SIZES = {
   sm: "max-w-3xl",
@@ -8,7 +9,13 @@ const SIZES = {
 
 export default function PageContainer({ size = "md", className = "", children }) {
   return (
-    <div className={`${SIZES[size]} min-h-[calc(100vh-4rem)] mx-auto px-4 sm:px-6 py-8 ${className}`}>
+    <div
+      className={cn(
+        SIZES[size],
+        "mx-auto min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6",
+        className
+      )}
+    >
       {children}
     </div>
   );

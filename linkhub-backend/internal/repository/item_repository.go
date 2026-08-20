@@ -131,6 +131,7 @@ func (r *itemRepository) FindByFilter(ctx context.Context, f dto.ItemFilter) ([]
 			Where("mit.tag_id IN ?", f.TagIDs).
 			Group("menu_items.id")
 	}
+	query = applyOwnerScope(query, f.OwnerScope, f.ActorID, "created_by", "folder_id")
 	if f.Sort == "newest" {
 		query = query.Order("created_at DESC")
 	} else {
@@ -175,6 +176,7 @@ func (r *itemRepository) Search(ctx context.Context, f dto.SearchFilter) ([]mode
 			Where("mit.tag_id IN ?", f.TagIDs).
 			Group("menu_items.id")
 	}
+	query = applyOwnerScope(query, f.OwnerScope, f.ActorID, "menu_items.created_by", "menu_items.folder_id")
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {

@@ -93,7 +93,7 @@ func (s *FolderService) GetByID(ctx context.Context, id uuid.UUID, actor *authct
 // contents, so that's exactly what needs the unlock token. Each
 // returned child's own PinProtected flag just tells the frontend
 // whether THAT child needs its own separate unlock to browse further.
-func (s *FolderService) ListChildren(ctx context.Context, parentID *uuid.UUID, actor *authctx.AuthUser, unlockToken string) ([]model.Folder, error) {
+func (s *FolderService) ListChildren(ctx context.Context, parentID *uuid.UUID, actor *authctx.AuthUser, unlockToken string, ownerScope string) ([]model.Folder, error) {
 	if parentID != nil {
 		parent, err := s.repo.FindByID(ctx, *parentID)
 		if err != nil {
@@ -110,7 +110,11 @@ func (s *FolderService) ListChildren(ctx context.Context, parentID *uuid.UUID, a
 		}
 	}
 
-	folders, err := s.repo.FindChildren(ctx, parentID)
+	var actorID *uuid.UUID
+	if actor != nil {
+		actorID = &actor.ID
+	}
+	folders, err := s.repo.FindChildren(ctx, parentID, ownerScope, actorID)
 	if err != nil {
 		return nil, apperror.Internal("gagal mengambil daftar folder")
 	}

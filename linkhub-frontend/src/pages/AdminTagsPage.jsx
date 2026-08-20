@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { listTags, createTag, updateTag, deleteTag } from "../api/tagApi";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import PageContainer from "@/components/PageContainer";
+import { Pencil, Trash, Trash2 } from "lucide-react";
 
 export default function AdminTagsPage() {
   const [tags, setTags] = useState([]);
@@ -9,7 +13,7 @@ export default function AdminTagsPage() {
   const [editingName, setEditingName] = useState("");
 
   function refresh() {
-    listTags().then(setTags).catch(() => {});
+    listTags().then(setTags).catch(() => { });
   }
 
   useEffect(refresh, []);
@@ -54,69 +58,61 @@ export default function AdminTagsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Kelola Tag</h1>
+    <PageContainer size="md">
+      <h1 className="mb-6 text-2xl font-bold text-foreground">Kelola Tag</h1>
 
-      <form onSubmit={handleCreate} className="flex gap-2 mb-6">
-        <input
-          type="text"
+      <form onSubmit={handleCreate} className="mb-2 flex gap-2">
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nama tag baru"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2"
           required
         />
-        <button
-          type="submit"
-          className="rounded-lg bg-blue-600 text-white px-4 py-2 font-medium hover:bg-blue-700"
-        >
-          Tambah
-        </button>
+        <Button type="submit">Tambah</Button>
       </form>
-      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
-      <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg">
+      <ul className="mt-4 divide-y rounded-lg border">
         {tags.map((tag) => (
           <li key={tag.id} className="flex items-center justify-between gap-3 px-4 py-3">
             {editingId === tag.id ? (
-              <input
-                type="text"
+              <Input
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
-                className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                className="h-8 flex-1 text-sm"
                 autoFocus
               />
             ) : (
-              <span className="truncate">{tag.name}</span>
+              <span className="truncate text-sm">{tag.name}</span>
             )}
 
-            <div className="flex items-center gap-3 shrink-0 text-sm">
+            <div className="flex shrink-0 items-center gap-3 text-sm">
               {editingId === tag.id ? (
                 <>
-                  <button onClick={() => handleRename(tag.id)} className="text-blue-600 hover:underline">
+                  <Button variant="link" size="sm" className="h-auto p-0" onClick={() => handleRename(tag.id)}>
                     Simpan
-                  </button>
-                  <button onClick={cancelEdit} className="text-slate-500 hover:underline">
+                  </Button>
+                  <Button variant="link" size="sm" className="h-auto p-0 text-muted-foreground" onClick={cancelEdit}>
                     Batal
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
-                  <button onClick={() => startEdit(tag)} className="text-slate-600 hover:underline">
-                    Rename
-                  </button>
-                  <button onClick={() => handleDelete(tag.id)} className="text-red-600 hover:underline">
-                    Hapus
-                  </button>
+                  <Button variant="outline" size="sm" className="h-auto rounded-sm p-1 text-muted-foreground" onClick={() => startEdit(tag)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="destructive" size="sm" className="h-auto rounded-sm p-1 text-muted-foreground" onClick={() => handleDelete(tag.id)}>
+                    <Trash2 className="h-4 w-4 text-white" />
+                  </Button>
                 </>
               )}
             </div>
           </li>
         ))}
         {tags.length === 0 && (
-          <li className="px-4 py-6 text-center text-slate-400 text-sm">Belum ada tag.</li>
+          <li className="px-4 py-6 text-center text-sm text-muted-foreground">Belum ada tag.</li>
         )}
       </ul>
-    </div>
+    </PageContainer>
   );
 }

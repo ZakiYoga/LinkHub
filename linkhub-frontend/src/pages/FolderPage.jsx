@@ -1,22 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaPlus, FaFolderPlus } from "react-icons/fa";
-import { GoChevronDown } from "react-icons/go";
+import { Plus, FolderPlus } from "lucide-react";
 import { listFolders, getFolder, deleteFolder } from "../api/folderApi";
 import { listItems, deleteItem } from "../api/itemApi";
 import { listTags } from "../api/tagApi";
 import { extractPinRequired } from "../api/pinApi";
 import { useAuthStore, selectIsAuthed, canEditEntity } from "../stores/authStore";
-import { useDebounce } from "../hooks/useDebounce";
 import { usePagination } from "../hooks/usePagination";
 import { trackView } from "../lib/trackView";
-import { useLocalStorage } from "../hooks/useLocalStorage";
 import FolderCard from "../components/FolderCard.jsx";
 import ItemCard from "../components/ItemCard.jsx";
 import Breadcrumb from "../components/Breadcrumb.jsx";
-import SearchBar from "../components/SearchBar.jsx";
-import TagFilterDropdown from "../components/TagFilterDropdown.jsx";
-import ViewModeToggle from "../components/ViewModeToggle.jsx";
 import FolderFormModal from "../components/FolderFormModal.jsx";
 import ItemFormModal from "../components/ItemFormModal.jsx";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog.jsx";
@@ -25,6 +19,10 @@ import PageContainer from "../components/PageContainer.jsx";
 import PinPromptModal from "../components/PinPromptModal.jsx";
 import PinManageModal from "../components/PinManageModal.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
+import ViewModeToggle from "../components/ViewModeToggle.jsx";
+import OwnerScopeSelect from "../components/OwnerScopeSelect.jsx";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useBrowseFilterStore } from "../stores/browseFilterStore.js";
 import { useViewMode } from "../hooks/useViewMode.js";
 
@@ -55,14 +53,11 @@ export default function FolderPage() {
   const [collaboratorFolder, setCollaboratorFolder] = useState(null);
   const [pinManageFolder, setPinManageFolder] = useState(null);
 
-  const { type, tagIds, sort, setType, toggleTag, clearTags } = useBrowseFilterStore();
+  const { type, tagIds, sort, ownerScope, setOwnerScope, setType, toggleTag, clearTags } =
+    useBrowseFilterStore();
   const { page, limit, setPage, changeLimit, reset: resetPage } = usePagination();
 
   const { viewMode, setViewMode, folderGridClass, itemGridClass } = useViewMode();
-
-  function handleClearTags() {
-    clearTags();
-  }
 
   useEffect(() => {
     listTags().then(setTags).catch(() => { });
@@ -70,7 +65,7 @@ export default function FolderPage() {
 
   useEffect(() => {
     resetPage();
-  }, [folderId, type, tagIds, sort, resetPage]);
+  }, [folderId, type, tagIds, sort, ownerScope, resetPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +73,7 @@ export default function FolderPage() {
 
     async function load() {
       const [folderList, breadcrumbData] = await Promise.all([
-        listFolders(folderId),
+        listFolders(folderId, isAuthed ? ownerScope : undefined),
         folderId ? getFolder(folderId).then((d) => d.breadcrumb) : Promise.resolve([]),
       ]);
       const itemData = await listItems({
@@ -88,6 +83,7 @@ export default function FolderPage() {
         sort,
         page,
         limit,
+        owner_scope: isAuthed && ownerScope !== "all" ? ownerScope : undefined,
       });
 
       if (!cancelled) {
@@ -114,7 +110,7 @@ export default function FolderPage() {
     return () => {
       cancelled = true;
     };
-  }, [folderId, type, tagIds, sort, page, limit, reloadKey]);
+  }, [folderId, type, tagIds, sort, ownerScope, isAuthed, page, limit, reloadKey]);
 
 
   useEffect(() => {
@@ -136,41 +132,44 @@ export default function FolderPage() {
 
   return (
     <PageContainer size="md">
-      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-slate-900">LinkHub</h1>
-
-        {isAuthed && (
-          <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setFolderModal({ open: true, folder: null })}
-              className="flex items-center gap-1.5 text-sm rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
-            >
-              <FaFolderPlus /> Buat Folder
-            </button>
-            <button
-              type="button"
-              onClick={() => setItemModal({ open: true, item: null })}
-              className="flex items-center gap-1.5 text-sm rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
-            >
-              <FaPlus /> Tambah Link
-            </button>
-          </div>
-        )}
-
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-foreground">LinkHub</h1>
         <ViewModeToggle value={viewMode} onChange={setViewMode} />
-
       </div>
+
+      {isAuthed && (
+        <div className="flex flex-wrap flex-col sm:flex-row-reverse items-center justify-between gap-4 sm:gap-2 mb-6 ">
+          <div className="flex gap-2 w-full sm:w-fit">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFolderModal({ open: true, folder: null })}
+            >
+              <FolderPlus /> Buat Folder
+            </Button>
+            <Button size="sm" onClick={() => setItemModal({ open: true, item: null })}>
+              <Plus /> Tambah Link
+            </Button>
+          </div>
+          <div className="flex gap-2 w-full sm:w-fit">
+            <OwnerScopeSelect value={ownerScope} onChange={setOwnerScope} className="w-42.5" />
+          </div>
+        </div>
+      )}
 
       {breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} />}
 
       {loading ? (
-        <p className="text-slate-400">Memuat...</p>
+        <div className="space-y-3">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
       ) : (
         <>
           {folders.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wide">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Folder
               </h2>
               <div className={folderGridClass}>
@@ -193,13 +192,13 @@ export default function FolderPage() {
           )}
 
           <section className="flex h-auto flex-1 flex-col gap-3">
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Link
             </h2>
             {items.length === 0 ? (
-              <p className="text-slate-400">Belum ada link di folder ini.</p>
+              <p className="text-muted-foreground">Belum ada link di folder ini.</p>
             ) : (
-              <div className={`${itemGridClass}`}>
+              <div className={itemGridClass}>
                 {items.map((item) => (
                   <ItemCard
                     key={item.id}

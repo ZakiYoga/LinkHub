@@ -31,6 +31,9 @@ type ItemFilter struct {
 	Sort     string // "name" | "newest"
 	Page     int
 	Limit    int
+
+	OwnerScope string
+	ActorID    *uuid.UUID
 }
 
 // SearchFilter is used for mode "search": global search across all folders.
@@ -40,6 +43,10 @@ type SearchFilter struct {
 	TagIDs []uuid.UUID
 	Page   int
 	Limit  int
+
+	// See ItemFilter.OwnerScope / Actor ID for semantics
+	OwnerScope string
+	ActorID    *uuid.UUID
 }
 
 type SearchResultItem struct {
