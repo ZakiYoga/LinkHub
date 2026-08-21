@@ -146,6 +146,29 @@ func (s *ItemService) Update(ctx context.Context, id uuid.UUID, in dto.UpdateIte
 	if in.Description != nil {
 		item.Description = *in.Description
 	}
+
+	// Same "changed vs omitted" caveat as FolderService.Update: callers
+	// must always send folder_id explicitly (null included) since a Go
+	// pointer can't distinguish "omitted" from "explicitly null" once
+	// JSON-decoded. ItemFormModal and the drag-drop handler both do.
+	folderChanged := (in.FolderID == nil) != (item.FolderID == nil) ||
+		(in.FolderID != nil && item.FolderID != nil && *in.FolderID != *item.FolderID)
+	if folderChanged && in.FolderID != nil {
+		target, err := s.folderRepo.FindByID(ctx, *in.FolderID)
+		if err != nil {
+			return nil, apperror.NotFound("folder tujuan tidak ditemukan")
+		}
+		// Same access rule as Create: owner/collaborator/admin of the
+		// target folder. Items don't nest, so there's no cycle to check
+		// here — only folders can create that kind of loop.
+		allowed, err := s.perm.CanAccessFolder(ctx, actor, target)
+		if err != nil {
+			return nil, apperror.Internal("gagal memeriksa akses")
+		}
+		if !allowed {
+			return nil, apperror.Forbidden("tidak punya akses ke folder tujuan")
+		}
+	}
 	item.FolderID = in.FolderID
 	item.UpdatedBy = &actor.ID
 

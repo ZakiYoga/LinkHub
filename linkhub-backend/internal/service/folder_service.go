@@ -126,7 +126,18 @@ func (s *FolderService) ListChildren(ctx context.Context, parentID *uuid.UUID, a
 
 // Update requires CanEditFolder — the folder's own creator, or admin.
 // Being a collaborator alone does not allow renaming/moving someone
-// else's folder (section 4).
+// else's folder (section 4). Moving to a different parent (drag & drop
+// or manual edit) adds two more checks on top of that: the move can't
+// create a cycle in the tree, and the actor must also be welcome in
+// the destination folder — CanEditFolder above only proved they own
+// *this* folder, not that they may place content into the target one.
+//
+// Note: in.ParentID being nil is ambiguous between "field omitted" and
+// "explicitly move to root" (a plain Go pointer can't tell the two
+// apart once JSON-decoded). Every known caller (FolderFormModal, and
+// the drag-drop handler) always sends parent_id explicitly, so this is
+// safe in practice — but any new caller MUST do the same, or it will
+// silently move the folder to root on a rename-only request.
 func (s *FolderService) Update(ctx context.Context, id uuid.UUID, in dto.UpdateFolderInput, actor *authctx.AuthUser) (*model.Folder, error) {
 	f, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -139,7 +150,45 @@ func (s *FolderService) Update(ctx context.Context, id uuid.UUID, in dto.UpdateF
 	if in.Name != nil {
 		f.Name = *in.Name
 	}
-	f.ParentID = in.ParentID
+
+	parentChanged := (in.ParentID == nil) != (f.ParentID == nil) ||
+		(in.ParentID != nil && f.ParentID != nil && *in.ParentID != *f.ParentID)
+
+	if parentChanged {
+		if in.ParentID != nil {
+			if *in.ParentID == f.ID {
+				return nil, apperror.BadRequest("folder tidak bisa dipindahkan ke dalam dirinya sendiri")
+			}
+			target, err := s.repo.FindByID(ctx, *in.ParentID)
+			if err != nil {
+				return nil, apperror.NotFound("folder tujuan tidak ditemukan")
+			}
+			cyclic, err := s.wouldCreateCycle(ctx, f.ID, *in.ParentID)
+			if err != nil {
+				return nil, apperror.Internal("gagal memeriksa struktur folder")
+			}
+			if cyclic {
+				return nil, apperror.BadRequest("folder tidak bisa dipindahkan ke dalam anaknya sendiri")
+			}
+			// Same rule as ItemService.Create: allowed to place content
+			// here means owner/collaborator/admin of the target — PIN
+			// grants browsing, never write access (PermissionService's
+			// IsFolderUnlocked bypasses PIN entirely once CanAccessFolder
+			// is already true, so there is no separate PIN-based write
+			// grant to check here).
+			allowed, err := s.perm.CanAccessFolder(ctx, actor, target)
+			if err != nil {
+				return nil, apperror.Internal("gagal memeriksa akses")
+			}
+			if !allowed {
+				return nil, apperror.Forbidden("tidak punya akses ke folder tujuan")
+			}
+		}
+		// Moving to root (in.ParentID == nil) needs no extra check —
+		// same as creating at root, open to any logged-in actor.
+		f.ParentID = in.ParentID
+	}
+
 	f.UpdatedBy = &actor.ID
 
 	if err := s.repo.Update(ctx, f); err != nil {
@@ -147,6 +196,32 @@ func (s *FolderService) Update(ctx context.Context, id uuid.UUID, in dto.UpdateF
 	}
 	s.writeAudit(ctx, f.ID, f.Name, "updated", actor.ID)
 	return f, nil
+}
+
+// wouldCreateCycle reports whether setting folderID's parent to
+// newParentID would create a cycle — i.e. whether newParentID is
+// folderID itself or one of folderID's own descendants. Implemented by
+// walking UP from newParentID toward the root (same pattern as
+// BuildBreadcrumb / PermissionService.ancestorChainIDs) and checking
+// whether folderID appears along that walk; if it does, newParentID is
+// a descendant of folderID and the move would loop the tree back on
+// itself.
+func (s *FolderService) wouldCreateCycle(ctx context.Context, folderID, newParentID uuid.UUID) (bool, error) {
+	currentID := &newParentID
+	for currentID != nil {
+		if *currentID == folderID {
+			return true, nil
+		}
+		f, err := s.repo.FindByID(ctx, *currentID)
+		if err != nil {
+			// Parent missing/soft-deleted: stop walking rather than
+			// fail the whole check — same defensive choice
+			// PermissionService.ancestorChainIDs makes.
+			break
+		}
+		currentID = f.ParentID
+	}
+	return false, nil
 }
 
 // Delete implements the delete guard from design doc section 7:

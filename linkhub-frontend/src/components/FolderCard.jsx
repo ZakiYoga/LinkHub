@@ -1,8 +1,10 @@
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
-import { Folder, MoreVertical, Users, Pencil, Trash2, KeyRound, FolderLock } from "lucide-react";
+import { Folder, MoreVertical, Users, Pencil, Trash2, KeyRound } from "lucide-react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { folderShape } from "../types/propTypes";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -11,22 +13,50 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-// canEdit: owner or admin — allowed to rename/delete this folder.
-// canManageCollaborators mirrors canEdit on the backend (owner or
-// admin), so it's the same value; kept as a separate prop in case that
-// ever diverges.
+// canEdit: owner or admin — allowed to rename/delete this folder. Also
+// gates whether the card can be picked up and dragged: moving a folder
+// requires the same permission as editing it (backend enforces this
+// too, in FolderService.Update — this is just the matching frontend
+// gate so people don't drag something they can't actually move).
+//
+// The card is always a drop TARGET regardless of canEdit, because
+// authorization for *receiving* a moved folder/item depends on access
+// to the destination, not the card being dragged — the backend is the
+// real gate; disallowed drops just come back as an error toast.
 export default function FolderCard({ folder, canEdit, onEdit, onDelete, onManageCollaborators, onManagePin }) {
+  const draggable = useDraggable({
+    id: `folder-${folder.id}`,
+    data: { type: "folder", id: folder.id, currentParentId: folder.parent_id ?? null },
+    disabled: !canEdit,
+  });
+  const droppable = useDroppable({
+    id: `folder-${folder.id}`,
+    data: { type: "folder", id: folder.id },
+  });
+
   return (
-    <div className="group relative">
+    <div
+      ref={(node) => {
+        draggable.setNodeRef(node);
+        droppable.setNodeRef(node);
+      }}
+      className={cn(
+        "group relative rounded-lg transition-opacity",
+        draggable.isDragging && "opacity-40",
+        droppable.isOver && "ring-2 ring-primary ring-offset-1"
+      )}
+    >
       <Link
         to={`/folder/${folder.id}`}
+        // Same reasoning as ItemCard.jsx: only spread dnd-kit's
+        // listeners/attributes when dragging is enabled, otherwise its
+        // role="button" override breaks the Link's native role="link"
+        // semantics for guests/non-owners who can't drag anyway.
+        {...(canEdit ? draggable.listeners : {})}
+        {...(canEdit ? draggable.attributes : {})}
         className="flex items-center gap-3 rounded-lg border p-4 transition hover:border-foreground/30 hover:shadow-sm"
       >
-        {folder.pin_protected ? (
-          <FolderLock className="h-8 w-8 shrink-0 fill-amber-400 text-amber-700/60" />
-        ) : (
-          <Folder className="h-8 w-8 shrink-0 fill-amber-400 text-amber-600/60" />
-        )}
+        <Folder className="h-8 w-8 shrink-0 fill-amber-400 text-amber-500/60" />
         <span className="truncate pr-8 font-medium text-foreground">{folder.name}</span>
       </Link>
 

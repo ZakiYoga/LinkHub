@@ -1,21 +1,43 @@
 import PropTypes from "prop-types";
 import { Pencil, Trash2 } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
 import ItemIcon from "./ItemIcon.jsx";
 import { menuItemShape } from "../types/propTypes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+// canEdit gates dragging too — moving an item requires the same
+// permission as editing it (ItemService.Update enforces this
+// server-side as well). Items are never drop targets themselves, only
+// FolderCard is — see FolderCard.jsx.
 export default function ItemCard({ item, breadcrumb, canEdit, onOpen, onEdit, onDelete, viewMode = "list" }) {
   const isGrid = viewMode === "grid";
+  const draggable = useDraggable({
+    id: `item-${item.id}`,
+    data: { type: "item", id: item.id, currentParentId: item.folder_id ?? null },
+    disabled: !canEdit,
+  });
 
   return (
-    <div className="group relative">
+    <div
+      ref={draggable.setNodeRef}
+      className={cn("group relative transition-opacity", draggable.isDragging && "opacity-40")}
+    >
       <a
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
         onClick={onOpen}
+        // Only wire up dnd-kit's listeners/attributes when dragging is
+        // actually enabled. dnd-kit adds role="button" + aria-disabled
+        // even when disabled: true, which stomps the <a> tag's native
+        // role="link" semantics — breaking screen readers AND
+        // getByRole("link") queries in tests for the (very common)
+        // canEdit=false / guest-viewing case where none of this should
+        // apply anyway.
+        {...(canEdit ? draggable.listeners : {})}
+        {...(canEdit ? draggable.attributes : {})}
         className={cn(
           "flex rounded-lg border p-4 transition hover:border-foreground/30 hover:shadow-sm",
           isGrid ? "h-full flex-col items-center gap-2 text-center" : "items-center gap-3"
