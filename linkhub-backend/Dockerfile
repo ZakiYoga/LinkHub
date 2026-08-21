@@ -1,16 +1,24 @@
-# --- build stage ---
-FROM golang:1.22-alpine AS build
+# linkhub-backend/Dockerfile
+
+# --- Stage 1: Build ---
+FROM golang:1.23-alpine AS builder
+
 WORKDIR /app
+
+# cache dependency layer
 COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/api ./cmd/api
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/seed ./cmd/seed
 
-# --- runtime stage ---
-FROM alpine:3.19
-RUN apk add --no-cache ca-certificates
-COPY --from=build /bin/api /bin/api
-COPY --from=build /bin/seed /bin/seed
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/api ./cmd/api
+
+# --- Stage 2: Runtime ---
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+COPY --from=builder /app/bin/api .
+
 EXPOSE 8080
-CMD ["/bin/api"]
+CMD ["./api"]

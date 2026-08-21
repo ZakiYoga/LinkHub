@@ -1,0 +1,59 @@
+# ~/projects/LinkHub/docker-compose.yml
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: saktihub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - saktihub-network
+    ports:
+      - "127.0.0.1:5433:5432"   # bind ke localhost saja, bukan 0.0.0.0 — hindari expose ke publik
+
+  redis:
+    image: redis:7-alpine
+    container_name: saktihub-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - saktihub-network
+    ports:
+      - "127.0.0.1:6380:6379"
+
+  backend:
+    build: ./linkhub-backend
+    container_name: saktihub-backend
+    restart: unless-stopped
+    env_file:
+      - ./linkhub-backend/.env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - saktihub-network
+    ports:
+      - "127.0.0.1:8080:8080"   # dibuka ke localhost supaya Nginx host bisa proxy ke sini
+
+  frontend:
+    build: ./linkhub-frontend
+    container_name: saktihub-frontend
+    restart: unless-stopped
+    networks:
+      - saktihub-network
+    ports:
+      - "127.0.0.1:3000:80"     # dibuka ke localhost supaya Nginx host bisa proxy ke sini
+
+networks:
+  saktihub-network:
+    external: true
+
+volumes:
+  redis-data:

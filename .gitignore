@@ -3,6 +3,10 @@
 /linkhub-frontend/dist/
 /linkhub-frontend/build/
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 6252c1d6e903f32515e3db55a3dce3bfcf6dfb9f
 # Backend - Go
 /linkhub-backend/.env
 
@@ -12,4 +16,14 @@
 /linkhub-backend/*.out
 
 # OS
+<<<<<<< HEAD
 .DS_Store
+/linkhub-frontend/.env
+
+# Root env & data (jangan pernah commit)
+/.env
+/postgres-data/
+/linkhub-frontend/.env
+=======
+.DS_Store
+>>>>>>> 6252c1d6e903f32515e3db55a3dce3bfcf6dfb9f
